@@ -26,7 +26,7 @@ app.listen(PORT, () => console.log(`App is listening on ${PORT}`));
 //API routes
 app.get('/location', getLocationFromSql);
 app.get('/weather', getWeatherFromSql);
-app.get('/events', getEvents);
+app.get('/events', getEventsFromSql);
 
 //models
 function Location(locationQuery, locationInfo) {
@@ -44,8 +44,8 @@ function Weather(day) {
 function Event(event) {
     this.link = event.url;
     this.name = event.name.text;
-    this.event_date = new Date(event.start.local).toString().slice(0, 15);
     this.summary = event.summary;
+    this.event_date = new Date(event.start.local).toString().slice(0, 15);
 }
 
 function getLocationFromSql(request, response) {
@@ -69,14 +69,13 @@ function fetchLocationFromApi(query, response) {
     return superagent.get(_URL)
         .then(data => {
             console.log('GETTING LOCATION FROM API');
-            if (!data.body.results.length) { throw 'No Data'; }
-            else {
+            
                 const location = new Location(query, data.body.results[0]);
-                const NEWSQL = `INSERT INTO locations (search_query,formatted_query,latitude,longitude) VALUES($1,$2,$3,$4);`;
-                const newValues = Object.values(location);
-                return client.query(NEWSQL, newValues)
-                    .then(() => response.send(location))
-            }
+                const SQL = `INSERT INTO locations (search_query,formatted_query,latitude,longitude) 
+                    VALUES('${search_query}','${formatted_query}',${latitude},${longitude});`;
+                client.query(SQL);
+                response.send(location);
+            
         });
 }
 
@@ -102,25 +101,38 @@ function fetchWeatherFromApi(request, response) {
         .then(apiResponse => {
             const dailyWeather = apiResponse.body.daily.data.map(day => new Weather(day));
             const SQL = `INSERT INTO weathers (forecast,time,location_id) 
-                        VALUES ('${dailyWeather.forecast}','${dailyWeather.time}',${request.query.data.id});`;
+                VALUES ('${dailyWeather.forecast}','${dailyWeather.time}',${request.query.data.id});`;
             client.query(SQL);
             response.send(dailyWeather);
-
         })
         .catch(error => handleError(error));
-
 }
 
-function getEvents(request, response) {
+function getEventsFromSql(request, response) {
+    const SQL = `SELECT * FROM events WHERE location_id=${request.query.data.id};`;
+    return client.query(SQL)
+        .then(result => {
+            if (result.rowCount > 0) {
+                console.log('GETTING EVENT FROM SQL');
+                response.send(result.rows[0]);
+            } else {
+                console.log('GETTING EVENT FROM API');
+                fetchEventsFromApi(request, response);
+            }
+        })
+        .catch(error => handleError(error));
+}
+
+function fetchEventsFromApi(request, response) {
     const url = `https://www.eventbriteapi.com/v3/events/search?token=${process.env.EVENTBRITE_API_KEY}&location.address=${request.query.data.formatted_query}`;
 
     superagent.get(url)
         .then(result => {
-            const events = result.body.events.map(eventData => {
-                const event = new Event(eventData);
-                return event;
-            });
-
+            const events = result.body.events.map(eventData => new Event(eventData));
+            const SQL = `INSERT INTO events (link,name,summary,event_date,location_id) 
+                VALUES ('${events.link}','${events.name}','${events.summary}', 
+                '${events.event_date}', ${request.query.data.id});`;
+            client.query(SQL);
             response.send(events);
         })
         .catch(error => handleError(error, response));

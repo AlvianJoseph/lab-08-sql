@@ -58,13 +58,13 @@ function getLocationFromSql(request, response) {
                 // let sqlLocation = new Location(query, result.rows[0]);
                 response.send(result.rows[0]);
             } else {
-                fetchApiLocation(query, response);
+                fetchLocationFromApi(query, response);
             }
         })
         .catch(error => handleError(error, response));
 }
 
-function fetchApiLocation(query, response) {
+function fetchLocationFromApi(query, response) {
     const _URL = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.GEOCODE_API_KEY}`;
     return superagent.get(_URL)
         .then(data => {
@@ -89,14 +89,13 @@ function getWeatherFromSql(request, response) {
                 response.send(result.rows[0]);
             } else {
                 console.log('GETTING WEATHER FROM API');
-                fetchApiWeather(request, response);
+                fetchWeatherFromApi(request, response);
             }
         })
         .catch(error => handleError(error));
 }
 
-
-function fetchApiWeather(request, response) {
+function fetchWeatherFromApi(request, response) {
     const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
 
     superagent.get(url)
@@ -104,7 +103,6 @@ function fetchApiWeather(request, response) {
             const dailyWeather = apiResponse.body.daily.data.map(day => new Weather(day));
             const SQL = `INSERT INTO weathers (forecast,time,location_id) 
                         VALUES ('${dailyWeather.forecast}','${dailyWeather.time}',${request.query.data.id});`;
-            // const values = Object.values(dailyWeather);
             client.query(SQL);
             response.send(dailyWeather);
 

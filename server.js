@@ -1,29 +1,24 @@
 'use strict';
 
+//----------------Define Dependencies------------------------//
 require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
 const pg = require('pg');
 
 const PORT = process.env.PORT || 3000;
-const app = express();
+app.listen(PORT, () => console.log(`App is listening on ${PORT}`));
 
+const app = express();
 app.use(cors());
 
-function handleError(err, res) {
-    console.error(err);
-    if (res) res.status(500).send('Sorry, something went wrong');
-}
-
+//----------------Connect to Database------------------------//
 const client = new pg.Client(process.env.DATABASE_URL);
 client.connect();
 client.on('error', err => console.error(err));
 
-app.listen(PORT, () => console.log(`App is listening on ${PORT}`));
-
-//API routes
+//----------------Define Routes------------------------//
 app.get('/location', getLocationFromDatabase);
 app.get('/weather', getWeatherFromDatabase);
 app.get('/events', getEventFromDatabase);
@@ -31,7 +26,13 @@ app.get('/movies', getMoviesFromDatabase);
 app.get('/yelp', getYelpFromDatabase);
 app.get('/trails', getTrailsFromDatabase);
 
-//models
+//----------------Create Error Handler------------------------//
+function handleError(err, res) {
+    console.error(err);
+    if (res) res.status(500).send('Sorry, something went wrong');
+}
+
+//----------------Models------------------------//
 function Location(locationQuery, locationInfo) {
     this.search_query = locationQuery;
     this.formatted_query = locationInfo.formatted_address;
@@ -88,6 +89,7 @@ function Trail(trail) {
     this.created_at = Date.now();
 }
 
+//----------------Request Location Data------------------------//
 function getLocationFromDatabase(request, response) {
     const query = request.query.data;
     const SQL = `SELECT * FROM locations WHERE search_query='${query}';`;
@@ -116,6 +118,7 @@ function fetchLocationFromApi(query, response) {
         });
 }
 
+//----------------Request Weather Data------------------------//
 function getWeatherFromDatabase(request, response) {
     const SQL = `SELECT * FROM weathers WHERE location_id=${request.query.data.id};`;
     return client.query(SQL)
@@ -147,6 +150,7 @@ function fetchWeatherFromApi(request, response) {
         .catch(error => handleError(error));
 }
 
+//----------------Request Events Data------------------------//
 function getEventFromDatabase(request, response) {
     const SQL = `SELECT * FROM events WHERE location_id=${request.query.data.id};`;
     return client.query(SQL)
@@ -179,6 +183,7 @@ function fetchEventsFromApi(request, response) {
         .catch(error => handleError(error, response));
 }
 
+//----------------Request Movie Data------------------------//
 function getMoviesFromDatabase(request, response) {
     const SQL = `SELECT * FROM movies WHERE location_id=${request.query.data.id};`;
     return client.query(SQL)
@@ -212,6 +217,7 @@ function fetchMoviesFromApi(request, response) {
         .catch(error => handleError(error, response));
 }
 
+//----------------Request Trails Data------------------------//
 function getTrailsFromDatabase(request, response) {
     const SQL = `SELECT * FROM trails WHERE location_id=${request.query.data.id};`;
     return client.query(SQL)
@@ -245,6 +251,7 @@ function fetchTrailsFromApi(request, response) {
         .catch(error => handleError(error, response));
 }
 
+//----------------Request Yelp Data------------------------//
 function getYelpFromDatabase(request, response) {
     const SQL = `SELECT * FROM yelps WHERE location_id=${request.query.data.id};`;
     return client.query(SQL)

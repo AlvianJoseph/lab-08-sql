@@ -28,8 +28,8 @@ app.get('/location', getLocationFromDatabase);
 app.get('/weather', getWeatherFromDatabase);
 app.get('/events', getEventFromDatabase);
 app.get('/movies', getMoviesFromDatabase);
-// app.get('/yelp', getYelpFromDatabase);
-// app.get('/trails', getTrailsFromDatabase);
+app.get('/yelp', getYelpFromDatabase);
+app.get('/trails', getTrailsFromDatabase);
 
 //models
 function Location(locationQuery, locationInfo) {
@@ -168,11 +168,11 @@ function fetchEventsFromApi(request, response) {
     superagent.get(url)
         .then(result => {
             const events = result.body.events.map(eventData => new Event(eventData));
-            const SQL = `INSERT INTO events (link,name,summary,event_date,location_id) VALUES ('${events.link}',
-            '${events.name}','${events.summary}','${events.event_date}', ${request.query.data.id});`;
+            const SQL = `INSERT INTO events (link,name,summary,event_date,location_id) VALUES ($1, $2, $3, $4, $5);`;
+            const values = [events.link, events.name, events.summary, events.event_date, request.query.data.id]
 
             events.forEach(function (event) {
-                client.query(SQL);
+                client.query(SQL, values);
             });
             response.send(events);
         })
@@ -234,8 +234,8 @@ function fetchTrailsFromApi(request, response) {
         .then(result => {
             const trails = result.body.trails.map(trailData => new Trail(trailData));
 
-            const SQL = `INSERT INTO ${this.tableName} (name, location, length, stars, star_votes, summary, trail_url, conditions, condition_date, condition_time, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`;
-            const values = [trails.name, trails.location, trails.length, trails.stars, trails.star_votes, trails.summary, trails.trail_url, trails.conditions, trails.condition_date, trails.condition_time, trails.created_at, location_id];
+            const SQL = `INSERT INTO trails (name, location, length, stars, star_votes, summary, trail_url, conditions, condition_date, condition_time, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`;
+            const values = [trails.name, trails.location, trails.length, trails.stars, trails.star_votes, trails.summary, trails.trail_url, trails.conditions, trails.condition_date, trails.condition_time, request.query.data.id];
 
             trails.forEach(function (trail) {
                 client.query(SQL, values);
@@ -246,7 +246,7 @@ function fetchTrailsFromApi(request, response) {
 }
 
 function getYelpFromDatabase(request, response) {
-    const SQL = `SELECT * FROM yelp WHERE location_id=${request.query.data.id};`;
+    const SQL = `SELECT * FROM yelps WHERE location_id=${request.query.data.id};`;
     return client.query(SQL)
         .then(result => {
             if (result.rowCount > 0) {
@@ -254,26 +254,27 @@ function getYelpFromDatabase(request, response) {
                 response.send(result.rows[0]);
             } else {
                 console.log('GETTING YELP FROM API');
-                fetchTrailsFromApi(request, response);
+                fetchYelpsFromApi(request, response);
             }
         })
         .catch(error => handleError(error));
 }
 
-function fetchTrailsFromApi(request, response) {
+function fetchYelpsFromApi(request, response) {
     const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
 
         superagent.get(url)
+        .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
             .then(result => {
                 const yelps = result.body.businesses.map(yelpData => new Yelp(yelpData));
 
-                const SQL = `INSERT INTO yelps (name, image_url, price, rating, url, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
-                const values = [yelps.name, yelps.image_url, yelps.price, tyelpshis.rating, yelps.url, yelps.created_at, location_id];
+                const SQL = `INSERT INTO yelps (name, image_url, price, rating, url, location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+                const values = [yelps.name, yelps.image_url, yelps.price, yelps.rating, yelps.url, request.query.data.id];
 
                 yelps.forEach(function (yelp) {
                     client.query(SQL, values);
                 });
-                response.send(yelp);
+                response.send(yelps);
             })
             .catch(error => handleError(error, response));
 }

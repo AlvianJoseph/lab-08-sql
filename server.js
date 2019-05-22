@@ -120,8 +120,9 @@ function fetchLocationFromApi(query, response) {
         .then(apiResponse => {
             const location = new Location(query, apiResponse.body.results[0]);
             const SQL = `INSERT INTO locations (search_query,formatted_query,latitude,longitude) 
-                    VALUES('${location.search_query}','${location.formatted_query}',${location.latitude},${location.longitude});`;
-            client.query(SQL);
+                    VALUES($1, $2, $3);`;
+            const values = [location.search_query, location.formatted_query, location.latitude];
+            client.query(SQL, values);
             response.send(location);
         });
 }
@@ -148,10 +149,11 @@ function fetchWeatherFromApi(request, response) {
     superagent.get(url)
         .then(apiResponse => {
             const dailyWeather = apiResponse.body.daily.data.map(day => new Weather(day));
-            const SQL = `INSERT INTO weathers (forecast,time,location_id) 
-                VALUES ('${dailyWeather.forecast}','${dailyWeather.time}',${request.query.data.id});`;
+            const SQL = `INSERT INTO weathers (forecast,time,location_id) VALUES ($1, $2, $3);`;
+            const values = [dailyWeather.forecast, dailyWeather.time, request.query.data.id];
+
             dailyWeather.forEach(function (day) {
-                client.query(SQL);
+                client.query(SQL, values);
             });
             response.send(dailyWeather);
         })

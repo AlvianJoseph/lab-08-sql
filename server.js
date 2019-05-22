@@ -120,8 +120,8 @@ function fetchLocationFromApi(query, response) {
         .then(apiResponse => {
             const location = new Location(query, apiResponse.body.results[0]);
             const SQL = `INSERT INTO locations (search_query,formatted_query,latitude,longitude) 
-                    VALUES($1, $2, $3);`;
-            const values = [location.search_query, location.formatted_query, location.latitude];
+                    VALUES($1, $2, $3, $4);`;
+            const values = [location.search_query, location.formatted_query, location.latitude, location.longitude];
             client.query(SQL, values);
             response.send(location);
         });

@@ -8,7 +8,6 @@ const superagent = require('superagent');
 const pg = require('pg');
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`App is listening on ${PORT}`));
 
 const app = express();
 app.use(cors());
@@ -25,6 +24,15 @@ app.get('/events', getEventFromDatabase);
 app.get('/movies', getMoviesFromDatabase);
 app.get('/yelp', getYelpFromDatabase);
 app.get('/trails', getTrailsFromDatabase);
+
+//------------------Cache Timeouts------------------//
+const timeouts = {
+    weather: 15 * 1000,
+    yelp: 24 * 1000 * 60 * 60,
+    movies: 30 * 1000 * 60 * 60 * 24,
+    eventbrite: 6 * 1000 * 60 * 60,
+    trails: 7 * 1000 * 60 * 60 * 24
+  }
 
 //----------------Create Error Handler------------------------//
 function handleError(err, res) {
@@ -285,3 +293,5 @@ function fetchYelpsFromApi(request, response) {
             })
             .catch(error => handleError(error, response));
 }
+
+app.listen(PORT, () => console.log(`App is listening on ${PORT}`));
